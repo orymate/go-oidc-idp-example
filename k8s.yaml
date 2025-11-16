@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: go-oidc-idp-example
+  name: go-oidc-idp-example
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-oidc-idp-example
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: go-oidc-idp-example
+    spec:
+      containers:
+      - env:
+        - name: CONFIG
+          value: /config/config.json
+        image: go-oidc-idp-example:latest
+        imagePullPolicy: Never
+        name: go-oidc-idp-example
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: cfg
+        - mountPath: /users
+          name: users
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 3
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: go-oidc-idp-example
+        name: cfg
+      - persistentVolumeClaim:
+          claimName: go-oidc-idp-example-users
+        name: users
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: go-oidc-idp-example
+  name: go-oidc-idp-example
+spec:
+  ports:
+  - name: 8080-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: go-oidc-idp-example
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-oidc-idp-example
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: idp.axoflow.garden
+    http:
+      paths:
+      - backend:
+          service:
+            name: go-oidc-idp-example
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-oidc-idp-example
+data:
+  config.json: |
+    {
+      "baseUrl": "https://idp.axoflow.garden",
+      "usersFile": "/users/users.json",
+      "clients": [
+        {
+          "id": "test",
+          "name": "chalco",
+          "redirectUri": "https://axoflow.garden/login-callback",
+          "clientSecret": "Qd035+dLRfdiWOjRIwk82SQgIPyUApA5V1+Fnbnxyho="
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: go-oidc-idp-example-users
+  labels:
+    app: go-oidc-idp-example
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  #storageClassName: ""
