@@ -7,9 +7,13 @@ import (
 )
 
 func (r *Routes) Index(res http.ResponseWriter, req *http.Request) {
+	info := struct{ Username string }{}
 	user, _ := r.getUserFromSession(req)
+	if user != nil {
+		info.Username = user.Username
+	}
 
-	r.template.ExecuteTemplate(res, "index.html", struct{ Username string }{Username: user.Username})
+	r.template.ExecuteTemplate(res, "index.html", info)
 }
 
 func (r *Routes) Login(res http.ResponseWriter, req *http.Request) {
@@ -25,25 +29,9 @@ func (r *Routes) Login(res http.ResponseWriter, req *http.Request) {
 		return
 
 	case "POST":
-		req.ParseForm()
-		username := req.Form.Get("username")
-		password := req.Form.Get("password")
-
-		user, ok := r.user.Authenticate(username, password)
-		if !ok {
-			res.WriteHeader(http.StatusUnauthorized)
-			r.template.ExecuteTemplate(res, "login.html", struct{ Message string }{Message: "Invalid username or password"})
-			return
+		if user := r.login(res, req); user != nil {
+			http.Redirect(res, req, "/", http.StatusFound)
 		}
-
-		sessionId := r.session.Create(user.ID)
-		http.SetCookie(res, &http.Cookie{
-			Name:   "session",
-			Value:  sessionId,
-			MaxAge: 60 * 60 * 24 * 7,
-		})
-
-		http.Redirect(res, req, "/", http.StatusFound)
 		return
 
 	default:
@@ -51,6 +39,30 @@ func (r *Routes) Login(res http.ResponseWriter, req *http.Request) {
 		r.template.ExecuteTemplate(res, "login.html", nil)
 		return
 	}
+}
+
+func (r *Routes) login(res http.ResponseWriter, req *http.Request) *user.UserInfo {
+	if err := req.ParseForm(); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+	username := req.Form.Get("username")
+	password := req.Form.Get("password")
+
+	user, ok := r.user.Authenticate(username, password)
+	if !ok {
+		res.WriteHeader(http.StatusUnauthorized)
+		r.template.ExecuteTemplate(res, "login.html", struct{ Message string }{Message: "Invalid username or password"})
+		return nil
+	}
+
+	sessionId := r.session.Create(user.ID)
+	http.SetCookie(res, &http.Cookie{
+		Name:   "session",
+		Value:  sessionId,
+		MaxAge: 60 * 60 * 24 * 7,
+	})
+	return &user
 }
 
 func (r *Routes) Logout(res http.ResponseWriter, req *http.Request) {

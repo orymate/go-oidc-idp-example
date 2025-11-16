@@ -36,21 +36,21 @@ func New(config Config) *Routes {
 	}
 }
 
-func (r *Routes) getUserFromSession(req *http.Request) (user.UserInfo, error) {
+func (r *Routes) getUserFromSession(req *http.Request) (*user.UserInfo, error) {
 	sessionId, err := req.Cookie("session")
 	if err != nil {
-		return user.UserInfo{}, err
+		return nil, err
 	}
 
 	userId, err := r.session.Get(sessionId.Value)
 	if err != nil {
-		return user.UserInfo{}, err
+		return nil, err
 	}
 
 	u, ok := r.user.Get(userId)
 	if !ok {
-		return user.UserInfo{}, errors.New("user not found")
+		return nil, errors.New("user not found")
 	}
 
-	return u, nil
+	return &u, nil
 }

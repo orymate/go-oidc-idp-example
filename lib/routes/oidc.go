@@ -22,32 +22,39 @@ func (r *Routes) WellKnownOpenIdConfiguration(res http.ResponseWriter, req *http
 	return
 }
 
+func authRequest(getter interface{ Get(string) string }) oidc.AuthenticationRequest {
+	return oidc.AuthenticationRequest{
+		Scope:        getter.Get("scope"),
+		ResponseType: getter.Get("response_type"),
+		ClientID:     getter.Get("client_id"),
+		RedirectUri:  getter.Get("redirect_uri"),
+		Nonce:        getter.Get("nonce"),
+		State:        getter.Get("state"),
+	}
+}
+
 func (r *Routes) OidcAuth(res http.ResponseWriter, req *http.Request) {
+	var user *user.UserInfo
 	var authReq oidc.AuthenticationRequest
 	switch req.Method {
 	case "GET":
-		authReq = oidc.AuthenticationRequest{
-			Scope:        req.URL.Query().Get("scope"),
-			ResponseType: req.URL.Query().Get("response_type"),
-			ClientID:     req.URL.Query().Get("client_id"),
-			RedirectUri:  req.URL.Query().Get("redirect_uri"),
-			Nonce:        req.URL.Query().Get("nonce"),
-			State:        req.URL.Query().Get("state"),
-		}
+		authReq = authRequest(req.URL.Query())
 	case "POST":
 		err := req.ParseForm()
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		authReq = oidc.AuthenticationRequest{
-			Scope:        req.Form.Get("scope"),
-			ResponseType: req.Form.Get("response_type"),
-			ClientID:     req.Form.Get("client_id"),
-			RedirectUri:  req.Form.Get("redirect_uri"),
-			Nonce:        req.Form.Get("nonce"),
-			State:        req.Form.Get("state"),
+		if req.Form.Has("username") {
+			// GET -> login form
+			if user = r.login(res, req); user == nil {
+				return // failure, handled in r.login
+			}
+			authReq = authRequest(req.URL.Query())
+		} else {
+			// POST based auth flow
+			authReq = authRequest(req.Form)
 		}
 	default:
 		http.Redirect(res, req, fmt.Sprintf("%s?error=invalid_request&error_description=method not allowed", authReq.RedirectUri), http.StatusFound)
@@ -62,13 +69,15 @@ func (r *Routes) OidcAuth(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	user, err := r.getUserFromSession(req)
-	if err != nil {
-		http.Redirect(res, req, fmt.Sprintf("%s?error=login_required", authReq.RedirectUri), http.StatusFound)
-		return
+	if user == nil {
+		user, err = r.getUserFromSession(req)
+		if err != nil {
+			r.template.ExecuteTemplate(res, "login.html", nil)
+			return
+		}
 	}
 
-	idToken, err := r.oidc.GenerateIDToken(user, authReq.ClientID, authReq.Nonce)
+	idToken, err := r.oidc.GenerateIDToken(*user, authReq.ClientID, authReq.Nonce)
 	if err != nil {
 		http.Redirect(res, req, fmt.Sprintf("%s?error=server_error", authReq.RedirectUri), http.StatusFound)
 		return
