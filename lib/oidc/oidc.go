@@ -17,9 +17,10 @@ const (
 )
 
 type Client struct {
-	Id          string
-	Name        string
-	RedirectUri string
+	Id           string
+	Name         string
+	RedirectUri  string
+	ClientSecret string
 }
 
 type Oidc struct {
@@ -63,6 +64,7 @@ type AuthenticationRequest struct {
 	ClientID     string
 	RedirectUri  string
 	Nonce        string
+	State        string
 }
 
 type IDTokenPayload struct {
@@ -83,6 +85,7 @@ type OpenIDProviderMetadata struct {
 	ResponseTypesSupported           []string `json:"response_types_supported"`
 	SubjectTypesSupported            []string `json:"subject_types_supported"`
 	IdTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
+	TokenURL                         string   `json:"token_endpoint"`
 }
 
 func (o *Oidc) GetOpenIDProviderMetadata() OpenIDProviderMetadata {
@@ -90,8 +93,10 @@ func (o *Oidc) GetOpenIDProviderMetadata() OpenIDProviderMetadata {
 		Issuer:                o.baseUrl,
 		AuthorizationEndpoint: o.baseUrl + "/oidc/auth",
 		JWKsUri:               o.baseUrl + "/oidc/jwks",
+		TokenURL:              o.baseUrl + "/token",
 		ResponseTypesSupported: []string{
 			"id_token",
+			"code",
 		},
 		SubjectTypesSupported: []string{
 			"public",
@@ -128,7 +133,7 @@ func (o *Oidc) ValidateAuthenticationRequest(req AuthenticationRequest) error {
 		return errors.New("invalid_scope")
 	}
 
-	if req.ResponseType != "id_token" {
+	if req.ResponseType != "id_token" && req.ResponseType != "code" {
 		return errors.New("unsupported_response_type")
 	}
 
@@ -161,4 +166,31 @@ func (o *Oidc) GenerateIDToken(user user.UserInfo, clientID string, nonce string
 	}
 
 	return jws.CompactSerialize()
+}
+
+type TokenRequest struct {
+	GrantType    string
+	ClientID     string
+	ClientSecret string
+	RedirectUri  string
+	Code         string
+}
+
+func (o *Oidc) ValidateTokenRequest(req TokenRequest) error {
+	if req.GrantType != "authorization_code" {
+		return errors.New("unsupported grant type")
+	}
+
+	client, ok := o.getClient(req.ClientID)
+	if !ok {
+		return errors.New("access_denied")
+	}
+
+	if client.ClientSecret != req.ClientSecret {
+		return errors.New("bad client secret")
+	}
+
+	// TODO check redirect url?
+
+	return nil
 }

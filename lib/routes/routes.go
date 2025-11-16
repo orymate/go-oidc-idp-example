@@ -5,15 +5,17 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/rokoucha/go-oidc-idp-example/lib/codestore"
 	"github.com/rokoucha/go-oidc-idp-example/lib/oidc"
 	"github.com/rokoucha/go-oidc-idp-example/lib/session"
 	"github.com/rokoucha/go-oidc-idp-example/lib/user"
 )
 
 type Config struct {
-	Oidc    *oidc.Oidc
-	Session *session.Session
-	User    *user.User
+	Oidc      *oidc.Oidc
+	Session   *session.Session
+	User      *user.User
+	CodeStore *codestore.CodeStore
 }
 
 type Routes struct {
@@ -21,6 +23,7 @@ type Routes struct {
 	session  *session.Session
 	template *template.Template
 	user     *user.User
+	store    *codestore.CodeStore
 }
 
 func New(config Config) *Routes {
@@ -29,6 +32,7 @@ func New(config Config) *Routes {
 		session:  config.Session,
 		template: template.Must(template.ParseGlob("templates/*.html")),
 		user:     config.User,
+		store:    config.CodeStore,
 	}
 }
 
