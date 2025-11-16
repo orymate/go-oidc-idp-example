@@ -87,6 +87,7 @@ type OpenIDProviderMetadata struct {
 	SubjectTypesSupported            []string `json:"subject_types_supported"`
 	IdTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
 	TokenURL                         string   `json:"token_endpoint"`
+	EndSessionEndpoint               string   `json:"end_session_endpoint,omitempty"`
 }
 
 func (o *Oidc) GetOpenIDProviderMetadata() OpenIDProviderMetadata {
@@ -105,6 +106,7 @@ func (o *Oidc) GetOpenIDProviderMetadata() OpenIDProviderMetadata {
 		IdTokenSigningAlgValuesSupported: []string{
 			string(jose.RS256),
 		},
+		EndSessionEndpoint: o.baseUrl + "/logout",
 	}
 }
 
