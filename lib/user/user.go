@@ -16,8 +16,9 @@ const (
 type UserInfo struct {
 	ID       ulid.ULID
 	Username string
-	password []byte
-	Role     string
+	Password []byte
+	Groups   []string
+	Email    string
 }
 
 type User struct {
@@ -43,7 +44,7 @@ func (u *User) Get(id ulid.ULID) (UserInfo, bool) {
 	return u.users[i], true
 }
 
-func (u *User) Register(username string, password string, role string) error {
+func (u *User) Register(username string, password string, groups []string, email string) error {
 	if slices.IndexFunc(u.users, func(u UserInfo) bool {
 		return u.Username == username
 	}) != -1 {
@@ -54,7 +55,8 @@ func (u *User) Register(username string, password string, role string) error {
 		ID:       ulid.Make(),
 		Username: username,
 		password: hash(u.salt, password),
-		Role:     role,
+		Email:    email,
+		Groups:   groups,
 	})
 
 	return nil

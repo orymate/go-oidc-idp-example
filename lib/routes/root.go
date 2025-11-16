@@ -91,6 +91,7 @@ func (r *Routes) Register(res http.ResponseWriter, req *http.Request) {
 	case "POST":
 		req.ParseForm()
 		username := req.Form.Get("username")
+		email := req.Form.Get("email")
 		password := req.Form.Get("password")
 		passwordConfirm := req.Form.Get("password_confirm")
 		if password != passwordConfirm {
@@ -99,7 +100,7 @@ func (r *Routes) Register(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		err := r.user.Register(username, password, user.RoleUser)
+		err := r.user.Register(username, password, []string{user.RoleUser}, email)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			r.template.ExecuteTemplate(res, "register.html", struct{ Message string }{Message: err.Error()})

@@ -68,14 +68,15 @@ type AuthenticationRequest struct {
 }
 
 type IDTokenPayload struct {
-	Issuer     string `json:"iss"`
-	Subject    string `json:"sub"`
-	Audience   string `json:"aud"`
-	Expiration int64  `json:"exp"`
-	IssuedAt   int64  `json:"iat"`
-	Nonce      string `json:"nonce"`
-	Name       string `json:"name"`
-	Role       string `json:"role"`
+	Issuer     string   `json:"iss"`
+	Subject    string   `json:"sub"`
+	Audience   string   `json:"aud"`
+	Expiration int64    `json:"exp"`
+	IssuedAt   int64    `json:"iat"`
+	Nonce      string   `json:"nonce"`
+	Name       string   `json:"name"`
+	Groups     []string `json:"groups"`
+	Email      string   `json:"email"`
 }
 
 type OpenIDProviderMetadata struct {
@@ -154,7 +155,8 @@ func (o *Oidc) GenerateIDToken(user user.UserInfo, clientID string, nonce string
 		IssuedAt:   time.Now().Unix(),
 		Nonce:      nonce,
 		Name:       user.Username,
-		Role:       user.Role,
+		Groups:     user.Groups,
+		Email:      user.Email,
 	})
 	if err != nil {
 		return "", err
