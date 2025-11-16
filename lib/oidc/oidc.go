@@ -140,9 +140,13 @@ func (o *Oidc) ValidateAuthenticationRequest(req AuthenticationRequest) error {
 		return errors.New("unsupported_response_type")
 	}
 
-	_, ok := o.getClient(req.ClientID)
+	client, ok := o.getClient(req.ClientID)
 	if !ok {
 		return errors.New("access_denied")
+	}
+
+	if !strings.HasPrefix(req.RedirectUri, client.RedirectUri) {
+		return errors.New("invalid_redirect_uri")
 	}
 
 	return nil
