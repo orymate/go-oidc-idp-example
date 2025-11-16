@@ -104,6 +104,13 @@ func (r *Routes) Register(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			r.template.ExecuteTemplate(res, "register.html", struct{ Message string }{Message: err.Error()})
+			return
+		}
+
+		if err := r.user.SaveUsers(); err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			r.template.ExecuteTemplate(res, "register.html", struct{ Message string }{Message: err.Error()})
+			return
 		}
 
 		res.WriteHeader(http.StatusCreated)

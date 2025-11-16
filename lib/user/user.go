@@ -2,7 +2,9 @@ package user
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
+	"os"
 	"slices"
 
 	"github.com/oklog/ulid/v2"
@@ -22,14 +24,14 @@ type UserInfo struct {
 }
 
 type User struct {
-	salt  []byte
-	users []UserInfo
+	users     []UserInfo
+	usersPath string
 }
 
-func New(salt []byte) *User {
+func New(users []UserInfo, usersPath string) *User {
 	return &User{
-		salt:  salt,
-		users: []UserInfo{},
+		users:     users,
+		usersPath: usersPath,
 	}
 }
 
@@ -51,11 +53,12 @@ func (u *User) Register(username string, password string, groups []string, email
 		return errors.New("username already exists")
 	}
 
+	id := ulid.Make()
 	u.users = append(u.users, UserInfo{
-		ID:       ulid.Make(),
+		ID:       id,
 		Username: username,
-		password: hash(u.salt, password),
 		Email:    email,
+		Password: hash([]byte(id.String()), password),
 		Groups:   groups,
 	})
 
@@ -72,5 +75,49 @@ func (u *User) Authenticate(username, password string) (UserInfo, bool) {
 
 	user := u.users[i]
 
-	return user, subtle.ConstantTimeCompare(hash(u.salt, password), user.password) == 1
+	return user, subtle.ConstantTimeCompare(hash([]byte(user.ID.String()), password), user.Password) == 1
+}
+
+func (u *User) SaveUsers() (err error) {
+	if u.usersPath == "" {
+		return
+	}
+
+	data, err := json.Marshal(u.users)
+	if err != nil {
+		return
+	}
+
+	file, err := os.Create(u.usersPath + "~")
+	if err != nil {
+		return
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		file.Close()
+		return
+	}
+
+	err = file.Close()
+	if err != nil {
+		return
+	}
+
+	err = os.Rename(u.usersPath+"~", u.usersPath)
+	return
+}
+
+func (u *User) LoadUsers() (err error) {
+	if u.usersPath == "" {
+		return
+	}
+
+	data, err := os.ReadFile(u.usersPath)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &u.users)
+	return
 }

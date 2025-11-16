@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jose/go-jose/v3"
 	"github.com/rokoucha/go-oidc-idp-example/lib/oidc"
+	"github.com/rokoucha/go-oidc-idp-example/lib/user"
 )
 
 func (r *Routes) WellKnownOpenIdConfiguration(res http.ResponseWriter, req *http.Request) {

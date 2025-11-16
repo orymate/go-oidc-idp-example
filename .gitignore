@@ -1,2 +1,4 @@
 .next/
 node_modules/
+go-oidc-idp-example
+config.json
