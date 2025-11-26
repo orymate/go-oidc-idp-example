@@ -4,16 +4,22 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 
 	"github.com/oklog/ulid/v2"
 )
 
-const (
-	RoleAdmin = "Admin"
-	RoleUser  = "User"
-)
+type Config struct {
+	SelfRegistration   bool       `json:"selfRegistration"`
+	UserAdminGroup     string     `json:"userAdminGroup"`
+	Defaults           []UserInfo `json:"users"`
+	FilePath           string     `json:"filePath"`
+	CreateIfMissing    bool       `json:"createIfMissing"`
+	PasswordChangeable bool       `json:"passwordChangeable"`
+}
 
 type UserInfo struct {
 	ID       ulid.ULID
@@ -24,15 +30,51 @@ type UserInfo struct {
 }
 
 type User struct {
-	users     []UserInfo
-	usersPath string
+	Config
+	users []UserInfo
 }
 
-func New(users []UserInfo, usersPath string) *User {
-	return &User{
-		users:     users,
-		usersPath: usersPath,
+func cleanUsers(users []UserInfo) []UserInfo {
+	set := map[string]bool
+	for i, u := range uis {
+		if u.ID.IsZero() {
+			uis[i].ID = ulid.Make()
+		}
 	}
+	return uis
+}
+
+func New(config Config) (*User, error) {
+	u := User{
+		Config: config,
+		users: []UserInfo{},
+	}
+
+	if config.FilePath != "" && config.CreateIfMissing {
+		_, err := os.Stat(config.FilePath)
+		if err != nil {
+			if u.Defaults != nil {
+				u.users = u.Defaults
+				for i, user := range u.Defaults {
+					if user.ID == ulid.ULID{} {
+						u.Defaults[i] = ulid.Ma
+					}
+				}
+			}
+
+			if err := u.SaveUsers(); err != nil {
+				return nil, fmt.Errorf("failed to create empty user db: %e", err)
+			}
+		}
+	}
+
+	if err := u.loadUsersFromFile(); err != nil {
+		return nil, fmt.Errorf("failed to load users: %e", err)
+	} else {
+		slog.Info("users loaded", "count", len(u.users))
+	}
+
+	return &u, nil
 }
 
 func (u *User) Get(id ulid.ULID) (UserInfo, bool) {
@@ -79,7 +121,7 @@ func (u *User) Authenticate(username, password string) (UserInfo, bool) {
 }
 
 func (u *User) SaveUsers() (err error) {
-	if u.usersPath == "" {
+	if u.FilePath == "" {
 		return
 	}
 
@@ -88,7 +130,7 @@ func (u *User) SaveUsers() (err error) {
 		return
 	}
 
-	file, err := os.Create(u.usersPath + "~")
+	file, err := os.Create(u.FilePath + "~")
 	if err != nil {
 		return
 	}
@@ -104,16 +146,16 @@ func (u *User) SaveUsers() (err error) {
 		return
 	}
 
-	err = os.Rename(u.usersPath+"~", u.usersPath)
+	err = os.Rename(u.FilePath+"~", u.FilePath)
 	return
 }
 
-func (u *User) LoadUsers() (err error) {
-	if u.usersPath == "" {
+func (u *User) loadUsersFromFile() (err error) {
+	if u.FilePath == "" {
 		return
 	}
 
-	data, err := os.ReadFile(u.usersPath)
+	data, err := os.ReadFile(u.FilePath)
 	if err != nil {
 		return
 	}

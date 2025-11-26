@@ -3,6 +3,7 @@ package oidc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -36,15 +37,20 @@ type Config struct {
 	Keychain *keychain.Keychain
 }
 
-func New(config Config) (*Oidc, error) {
-	signingKey, err := config.Keychain.Create(SigningKeyKid)
-	if err != nil {
-		return nil, err
+func New(config Config, signingKey *jose.JSONWebKey) (*Oidc, error) {
+	if signingKey == nil {
+		key, err := config.Keychain.Create(SigningKeyKid)
+		if err != nil {
+			return nil, err
+		}
+		signingKey = &key
+		json, _ := signingKey.MarshalJSON()
+		fmt.Printf("generated new signing key: %s\n", json)
 	}
 
 	signer, err := jose.NewSigner(jose.SigningKey{
 		Algorithm: jose.RS256,
-		Key:       signingKey,
+		Key:       *signingKey,
 	}, nil)
 	if err != nil {
 		return nil, err

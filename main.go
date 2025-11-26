@@ -16,10 +16,13 @@ import (
 )
 
 type config struct {
-	Clients   []oidc.Client   `json:"clients"`
-	Users     []user.UserInfo `json:"users"`
-	BaseUrl   string          `json:"baseUrl"`
-	UsersFile string          `json:"usersFile"`
+	Clients []oidc.Client `json:"clients"`
+	BaseUrl string        `json:"baseUrl"`
+	Users   user.Config  `json:"users"`
+	SigningKey struct {
+		FilePath        string `json:"filePath"`
+		GenerateIfMissing bool   `json:"generateIfMissing"`
+	} `json:"signingKey"`
 }
 
 func LoadConfig(path string) (cfg config, err error) {
@@ -44,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("config: %#v\n\n", cfg)
+	slog.Info("Config loaded", "config", cfg)
 
 	oidcConfig := oidc.Config{
 		BaseUrl:  cfg.BaseUrl,
@@ -52,16 +55,13 @@ func main() {
 		Keychain: keychain.New(),
 	}
 
-	o, err := oidc.New(oidcConfig)
+	o, err := oidc.New(oidcConfig, cfg.SigningKey.FilePath, cfg.SigningKey.GenerateIfMissing)
 	if err != nil {
 		panic(err)
 	}
 	s := session.New()
 	c := codestore.New()
 	u := user.New(cfg.Users, cfg.UsersFile)
-	if err := u.LoadUsers(); err != nil {
-		fmt.Printf("failed to load users: %v\n", err)
-	}
 
 	r := routes.New(routes.Config{
 		Oidc:      o,
