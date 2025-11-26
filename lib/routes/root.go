@@ -61,6 +61,7 @@ func (r *Routes) login(res http.ResponseWriter, req *http.Request) *user.UserInf
 		Name:   "session",
 		Value:  sessionId,
 		MaxAge: 60 * 60 * 24 * 7,
+		Path:   "/",
 	})
 	return &user
 }
