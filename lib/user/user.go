@@ -75,15 +75,15 @@ func New(config Config) (*User, error) {
 	return &u, nil
 }
 
-func (u *User) Get(id ulid.ULID) (UserInfo, bool) {
+func (u *User) Get(id ulid.ULID) (UserInfo, int, bool) {
 	i := slices.IndexFunc(u.users, func(u UserInfo) bool {
 		return u.ID == id
 	})
 	if i == -1 {
-		return UserInfo{}, false
+		return UserInfo{}, -1, false
 	}
 
-	return u.users[i], true
+	return u.users[i], i, true
 }
 
 func (u *User) Register(username string, password string, groups []string, email string) error {
@@ -102,6 +102,24 @@ func (u *User) Register(username string, password string, groups []string, email
 		Groups:   groups,
 	})
 
+	return nil
+}
+
+func (u *User) ChangePassword(userID ulid.ULID, oldPassword, newPassword string) error {
+	if !u.PasswordChangeable {
+		return errors.New("password changes are disabled")
+	}
+
+	user, i, ok := u.Get(userID)
+	if !ok {
+		return errors.New("user not found")
+	}
+
+	if subtle.ConstantTimeCompare(hash([]byte(user.ID.String()), oldPassword), user.Password) != 1 {
+		return errors.New("invalid old password")
+	}
+
+	u.users[i].Password = hash([]byte(user.ID.String()), newPassword)
 	return nil
 }
 
