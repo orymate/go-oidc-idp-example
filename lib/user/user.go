@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/oklog/ulid/v2"
+	"github.com/siliconbrain/go-seqs/seqs"
 )
 
 const (
@@ -115,9 +116,31 @@ func (u *User) LoadUsers() (err error) {
 
 	data, err := os.ReadFile(u.usersPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return
 	}
 
-	err = json.Unmarshal(data, &u.users)
-	return
+	var loadedUsers []UserInfo
+	if err = json.Unmarshal(data, &loadedUsers); err != nil {
+		return
+	}
+
+	configUsers := u.users
+	u.users = seqs.ToSlice(
+		seqs.Concat(
+			seqs.FromSlice(loadedUsers),
+			seqs.Filter(
+				seqs.FromSlice(configUsers),
+				func(configUser UserInfo) bool {
+					return !slices.ContainsFunc(loadedUsers, func(u UserInfo) bool {
+						return u.ID == configUser.ID
+					})
+				},
+			),
+		),
+	)
+
+	return nil
 }
