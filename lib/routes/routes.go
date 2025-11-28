@@ -47,7 +47,7 @@ func (r *Routes) getUserFromSession(req *http.Request) (*user.UserInfo, error) {
 		return nil, err
 	}
 
-	u, ok := r.user.Get(userId)
+	u, _, ok := r.user.Get(userId)
 	if !ok {
 		return nil, errors.New("user not found")
 	}
