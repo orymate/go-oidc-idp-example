@@ -96,12 +96,17 @@ func (r *Routes) Register(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if !r.user.SelfRegistration {
+		http.Error(res, "Self registration is disabled", http.StatusForbidden)
+		return
+	}
+
 	switch req.Method {
-	case "GET":
+	case http.MethodGet:
 		r.template.ExecuteTemplate(res, "register.html", nil)
 		return
 
-	case "POST":
+	case http.MethodPost:
 		req.ParseForm()
 		username := req.Form.Get("username")
 		email := req.Form.Get("email")
@@ -113,8 +118,7 @@ func (r *Routes) Register(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		err := r.user.Register(username, password, []string{user.RoleUser}, email)
-		if err != nil {
+		if err := r.user.Register(username, password, []string{user.RoleUser}, email); err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			r.template.ExecuteTemplate(res, "register.html", struct{ Message string }{Message: err.Error()})
 			return
