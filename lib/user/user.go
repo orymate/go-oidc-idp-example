@@ -12,6 +12,10 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+const (
+	RoleUser = "user"
+)
+
 type Config struct {
 	SelfRegistration   bool       `json:"selfRegistration"`
 	UserAdminGroup     string     `json:"userAdminGroup"`
@@ -34,42 +38,36 @@ type User struct {
 	users []UserInfo
 }
 
-func cleanUsers(users []UserInfo) []UserInfo {
-	set := map[string]bool
-	for i, u := range uis {
+func ensureUserID(users []UserInfo) []UserInfo {
+	for i, u := range users {
 		if u.ID.IsZero() {
-			uis[i].ID = ulid.Make()
+			users[i].ID = ulid.Make()
 		}
 	}
-	return uis
+	return users
 }
 
 func New(config Config) (*User, error) {
 	u := User{
 		Config: config,
-		users: []UserInfo{},
+		users:  []UserInfo{},
 	}
 
 	if config.FilePath != "" && config.CreateIfMissing {
 		_, err := os.Stat(config.FilePath)
 		if err != nil {
 			if u.Defaults != nil {
-				u.users = u.Defaults
-				for i, user := range u.Defaults {
-					if user.ID == ulid.ULID{} {
-						u.Defaults[i] = ulid.Ma
-					}
-				}
+				u.users = ensureUserID(u.Defaults)
 			}
 
 			if err := u.SaveUsers(); err != nil {
-				return nil, fmt.Errorf("failed to create empty user db: %e", err)
+				return nil, fmt.Errorf("failed to create empty user db: %w", err)
 			}
 		}
 	}
 
 	if err := u.loadUsersFromFile(); err != nil {
-		return nil, fmt.Errorf("failed to load users: %e", err)
+		return nil, fmt.Errorf("failed to load users: %w", err)
 	} else {
 		slog.Info("users loaded", "count", len(u.users))
 	}
