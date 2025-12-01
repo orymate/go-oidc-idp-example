@@ -217,7 +217,9 @@
 	    <button class="submit-button" type="submit">Logout</button>
 	    {{ else }}
 	    <a class="button" href="/login">Login</a>
+	    {{ if .SelfRegistration }}
 	    <a class="button" href="/register">Register</a>
+	    {{ end }}
 	    {{ end }}
 
 

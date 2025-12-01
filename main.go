@@ -141,7 +141,11 @@ func main() {
 	http.HandleFunc("/oidc/auth", r.OidcAuth)
 	http.HandleFunc("/oidc/jwks", r.OidcJwks)
 	http.HandleFunc("/token", r.OidcToken)
-	http.HandleFunc("/register", r.Register)
+
+	if u.SelfRegistration {
+		slog.Info("self-registration is enabled")
+		http.HandleFunc("/register", r.Register)
+	}
 
 	if u.UserAdminGroup != "" {
 		http.HandleFunc("/admin", r.AdminPanel)

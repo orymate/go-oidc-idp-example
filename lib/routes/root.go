@@ -7,11 +7,15 @@ import (
 )
 
 func (r *Routes) Index(res http.ResponseWriter, req *http.Request) {
-	info := struct{ Username string }{}
+	info := struct {
+		Username         string
+		SelfRegistration bool
+	}{}
 	user, _ := r.getUserFromSession(req)
 	if user != nil {
 		info.Username = user.Username
 	}
+	info.SelfRegistration = r.user.SelfRegistration
 
 	r.template.ExecuteTemplate(res, "index.html", info)
 }
@@ -25,7 +29,7 @@ func (r *Routes) Login(res http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case "GET":
-		r.template.ExecuteTemplate(res, "login.html", nil)
+		r.template.ExecuteTemplate(res, "login.html", struct{ SelfRegistration bool }{SelfRegistration: r.user.SelfRegistration})
 		return
 
 	case "POST":
@@ -52,7 +56,10 @@ func (r *Routes) login(res http.ResponseWriter, req *http.Request) *user.UserInf
 	user, ok := r.user.Authenticate(username, password)
 	if !ok {
 		res.WriteHeader(http.StatusUnauthorized)
-		r.template.ExecuteTemplate(res, "login.html", struct{ Message string }{Message: "Invalid username or password"})
+		r.template.ExecuteTemplate(res, "login.html", struct {
+			Message          string
+			SelfRegistration bool
+		}{Message: "Invalid username or password", SelfRegistration: r.user.SelfRegistration})
 		return nil
 	}
 
