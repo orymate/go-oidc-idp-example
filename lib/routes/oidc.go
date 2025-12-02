@@ -19,7 +19,6 @@ func (r *Routes) WellKnownOpenIdConfiguration(res http.ResponseWriter, req *http
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Write(json)
-	return
 }
 
 func authRequest(getter interface{ Get(string) string }) oidc.AuthenticationRequest {
@@ -106,7 +105,6 @@ func (r *Routes) OidcJwks(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Write(json)
-	return
 }
 
 func (r *Routes) OidcToken(res http.ResponseWriter, req *http.Request) {

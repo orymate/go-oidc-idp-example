@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Login</title>
+    <title>Register User - Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
@@ -70,8 +70,8 @@
             align-items: center;
         }
 
-        /* Login */
-        .login-container {
+        /* Container */
+        .register-container {
             width: 405px;
             display: flex;
             flex-direction: column;
@@ -79,7 +79,7 @@
         }
 
         /* Button */
-        .submit-button {
+        button, a.button {
             margin: 0;
             padding: 0;
             border: 0;
@@ -91,10 +91,14 @@
             color: white;
             border-radius: 8px;
             cursor: pointer;
+            text-align: center;
+            text-decoration: none;
         }
 
-        .submit-button:focus,
-        .submit-button:hover {
+        button:focus,
+        button:hover,
+        a.button:focus,
+        a.button:hover {
             background: #ffb280;
         }
 
@@ -125,7 +129,9 @@
             border-color: #24d5fc;
         }
 
-        input {
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
             margin: 0;
             padding: 0;
             height: 20px;
@@ -141,6 +147,26 @@
             color: rgba(1, 10, 34, 0.25);
         }
 
+        /* Checkboxes */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
         /* Error */
         .error {
             color: #ec0b43;
@@ -149,39 +175,37 @@
             display: block;
         }
 
-        /* Account */
-        .account {
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 12px;
+            align-items: center;
             font-size: 12px;
-            font-weight: 400;
-            text-align: center;
         }
 
-        .account a {
-            font-weight: 700;
+        .nav a {
             color: #010a22;
+            font-weight: 700;
+            text-decoration: none;
         }
 
         @media (max-width: 600px) {
-            /* Layout */
             .layout {
                 flex-direction: column;
             }
 
-            /* Left */
             .layout-left {
                 min-width: 300px;
                 max-width: 100%;
                 height: 120px;
             }
 
-            /* Right */
             .layout-right {
                 padding: 0 32px;
                 justify-content: center;
             }
 
-            /* Login */
-            .login-container {
+            .register-container {
                 min-width: 300px;
             }
         }
@@ -201,38 +225,57 @@
     </div>
 
     <div class="layout-right">
+        <form class="register-container" action="/admin/register" method="post">
+            <div class="nav">
+                <a href="/admin">← Back to Admin Panel</a>
+            </div>
 
-        <form class="login-container" id="form" action="" method="post">
-            <h1>Login</h1>
+            <h1>Register User</h1>
+
+            <div class="nav">
+                Admin: {{ .Username }}
+            </div>
 
             <label class="label">
-		Username
+                Username
                 <div class="input">
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 25" width="24" height="25">
-				<path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-			</svg>
-
-                    <input type="text" placeholder="john.doe" name="username" />
+                    <input type="text" name="username" placeholder="Enter username" required />
                 </div>
             </label>
 
             <label class="label">
-		Password
+                Email
                 <div class="input">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 25" width="24" height="25">
-			    <path d="M17,7H22V17H17V19A1,1 0 0,0 18,20H20V22H17.5C16.95,22 16,21.55 16,21C16,21.55 15.05,22 14.5,22H12V20H14A1,1 0 0,0 15,19V5A1,1 0 0,0 14,4H12V2H14.5C15.05,2 16,2.45 16,3C16,2.45 16.95,2 17.5,2H20V4H18A1,1 0 0,0 17,5V7M2,7H13V9H4V15H13V17H2V7M20,15V9H17V15H20M8.5,12A1.5,1.5 0 0,0 7,10.5A1.5,1.5 0 0,0 5.5,12A1.5,1.5 0 0,0 7,13.5A1.5,1.5 0 0,0 8.5,12M13,10.89C12.39,10.33 11.44,10.38 10.88,11C10.32,11.6 10.37,12.55 11,13.11C11.55,13.63 12.43,13.63 13,13.11V10.89Z" />
-                    </svg>
-                    <input type="password" name="password" />
+                    <input type="email" name="email" placeholder="Enter email" required />
                 </div>
             </label>
 
-	    {{ if .Message }}
-	    <div class="error" id="error">{{ .Message }}</div>
-	    {{ end }}
+            <label class="label">
+                Password
+                <div class="input">
+                    <input type="password" name="password" placeholder="Enter password" required />
+                </div>
+            </label>
 
-            <button class="submit-button" type="submit">Continue</button>
+            <label class="label">
+                Groups
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="groups" value="user" checked />
+                        user
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="groups" value="admins" />
+                        admin
+                    </label>
+                </div>
+            </label>
 
-            <div class="account">Don't have an account? <a href="/register">Register here</a></div>
+            <button type="submit">Register User</button>
+
+            {{ if .Message }}
+            <div class="error">{{ .Message }}</div>
+            {{ end }}
         </form>
     </div>
 </div>

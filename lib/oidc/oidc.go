@@ -3,6 +3,9 @@ package oidc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -17,10 +20,10 @@ const (
 )
 
 type Client struct {
-	Id           string
-	Name         string
-	RedirectUri  string
-	ClientSecret string
+	Id           string `json:"id"`
+	Name         string `json:"name"`
+	RedirectUri  string `json:"redirectUri"`
+	ClientSecret string `json:"clientSecret"`
 }
 
 type Oidc struct {
@@ -31,31 +34,90 @@ type Oidc struct {
 }
 
 type Config struct {
-	BaseUrl  string
-	Clients  []Client
-	Keychain *keychain.Keychain
+	BaseUrl           string
+	Clients           []Client
+	Keychain          *keychain.Keychain
+	SigningKeyPath    string
+	GenerateIfMissing bool
 }
 
-func New(config Config) (*Oidc, error) {
-	signingKey, err := config.Keychain.Create(SigningKeyKid)
-	if err != nil {
-		return nil, err
+func New(cfg Config) (*Oidc, error) {
+	var signingKey *jose.JSONWebKey
+
+	if cfg.SigningKeyPath != "" {
+		data, err := os.ReadFile(cfg.SigningKeyPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				if cfg.GenerateIfMissing {
+					key, err := generateSigningKey(cfg.Keychain, cfg.SigningKeyPath)
+					if err != nil {
+						return nil, fmt.Errorf("failed to generate signing key: %w", err)
+					}
+					signingKey = key
+				} else {
+					return nil, fmt.Errorf("signing key file not found and GenerateIfMissing is false: %w", err)
+				}
+			} else {
+				return nil, fmt.Errorf("failed to read signing key: %w", err)
+			}
+		} else {
+			var key jose.JSONWebKey
+			if err := json.Unmarshal(data, &key); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal signing key: %w", err)
+			}
+			signingKey = &key
+			slog.Info("loaded signing key", "path", cfg.SigningKeyPath)
+		}
+	} else {
+		if cfg.GenerateIfMissing {
+			key, err := generateSigningKey(cfg.Keychain, "signing-key.json")
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate signing key: %w", err)
+			}
+			signingKey = key
+		}
 	}
+
+	if signingKey == nil {
+		return nil, errors.New("no signing key available")
+	}
+
+	cfg.Keychain.Add(*signingKey)
 
 	signer, err := jose.NewSigner(jose.SigningKey{
 		Algorithm: jose.RS256,
 		Key:       signingKey,
-	}, nil)
+	}, (&jose.SignerOptions{}).WithType("JWT").WithHeader("kid", SigningKeyKid))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create signer: %w", err)
 	}
 
 	return &Oidc{
-		baseUrl:  config.BaseUrl,
-		clients:  config.Clients,
-		keychain: config.Keychain,
+		baseUrl:  cfg.BaseUrl,
+		clients:  cfg.Clients,
+		keychain: cfg.Keychain,
 		signer:   signer,
 	}, nil
+}
+
+func generateSigningKey(keychain *keychain.Keychain, signingKeyPath string) (*jose.JSONWebKey, error) {
+	key, err := keychain.Create(SigningKeyKid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key in keychain: %w", err)
+	}
+
+	keyJSON, err := key.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal key: %w", err)
+	}
+	slog.Info("generated new signing key", "key", string(keyJSON))
+
+	if err := os.WriteFile(signingKeyPath, keyJSON, 0600); err != nil {
+		return nil, fmt.Errorf("failed to save signing key to %s: %w", signingKeyPath, err)
+	}
+	slog.Info("saved signing key", "path", signingKeyPath)
+
+	return &key, nil
 }
 
 type AuthenticationRequest struct {
