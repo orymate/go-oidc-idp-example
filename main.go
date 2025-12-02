@@ -150,6 +150,7 @@ func main() {
 		http.HandleFunc("/admin/register", r.AdminRegister)
 		http.HandleFunc("/admin/users/delete", r.AdminDeleteUser)
 		http.HandleFunc("/admin/users/reset-password", r.AdminResetPassword)
+		http.HandleFunc("/admin/users/update-groups", r.AdminUpdateUserGroups)
 		http.HandleFunc("/admin/users/api", r.AdminUsersAPI)
 	} else {
 		slog.Warn("user admin group is not set; admin routes are disabled")

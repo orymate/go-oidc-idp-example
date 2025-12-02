@@ -346,8 +346,24 @@
                         </td>
                         <td>
                             <div class="actions">
-                                <button type="button" class="small secondary" onclick="openResetModal('{{ .ID }}', '{{ .Username }}')">Reset Password</button>
-                                <form action="/admin/users/delete" method="post" onsubmit="return confirm('Delete user {{ .Username }}?');">
+                                <button 
+                                    type="button" 
+                                    class="small secondary" 
+                                    data-user-id="{{ .ID }}" 
+                                    data-username="{{ .Username }}" 
+                                    data-groups="{{ range $i, $g := .Groups }}{{ if $i }},{{ end }}{{ $g }}{{ end }}"
+                                    onclick="openUpdateGroupsModalFromData(this)">
+                                    Update Groups
+                                </button>
+                                <button 
+                                    type="button" 
+                                    class="small secondary" 
+                                    data-user-id="{{ .ID }}" 
+                                    data-username="{{ .Username }}"
+                                    onclick="openResetModalFromData(this)">
+                                    Reset Password
+                                </button>
+                                <form action="/admin/users/delete" method="post" class="delete-form" data-username="{{ .Username }}">
                                     <input type="hidden" name="user_id" value="{{ .ID }}" />
                                     <button type="submit" class="small danger">Delete</button>
                                 </form>
@@ -361,7 +377,6 @@
     </div>
 </div>
 
-<!-- Reset Password Modal -->
 <div id="resetPasswordModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -385,7 +400,44 @@
     </div>
 </div>
 
+<div id="updateGroupsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Update User Groups</h2>
+        </div>
+        <form id="updateGroupsForm" action="/admin/users/update-groups" method="post">
+            <input type="hidden" id="groups_user_id" name="user_id" />
+            <div class="form-group">
+                <label for="groups_username">Username:</label>
+                <input type="text" id="groups_username" readonly style="background-color: #f3f4f7;" />
+            </div>
+            <div class="form-group">
+                <label for="groups_input">Groups (comma-separated):</label>
+                <input type="text" id="groups_input" placeholder="e.g., users, admins, developers" />
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="secondary" onclick="closeUpdateGroupsModal()">Cancel</button>
+                <button type="submit">Update Groups</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    function openResetModalFromData(button) {
+        const userId = button.getAttribute('data-user-id');
+        const username = button.getAttribute('data-username');
+        openResetModal(userId, username);
+    }
+
+    function openUpdateGroupsModalFromData(button) {
+        const userId = button.getAttribute('data-user-id');
+        const username = button.getAttribute('data-username');
+        const groupsStr = button.getAttribute('data-groups');
+        const groups = groupsStr ? groupsStr.split(',').map(g => g.trim()).filter(g => g) : [];
+        openUpdateGroupsModal(userId, username, groups);
+    }
+
     function openResetModal(userId, username) {
         document.getElementById('reset_user_id').value = userId;
         document.getElementById('reset_username').value = username;
@@ -398,17 +450,66 @@
         document.getElementById('resetPasswordModal').classList.remove('active');
     }
 
-    // Close modal when clicking outside
+    function openUpdateGroupsModal(userId, username, groups) {
+        document.getElementById('groups_user_id').value = userId;
+        document.getElementById('groups_username').value = username;
+        document.getElementById('groups_input').value = Array.isArray(groups) ? groups.join(', ') : '';
+        document.getElementById('updateGroupsModal').classList.add('active');
+        document.getElementById('groups_input').focus();
+    }
+
+    function closeUpdateGroupsModal() {
+        document.getElementById('updateGroupsModal').classList.remove('active');
+    }
+
+    document.getElementById('updateGroupsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const groupsInput = document.getElementById('groups_input').value;
+        
+
+        const groups = groupsInput
+            .split(',')
+            .map(g => g.trim())
+            .filter(g => g.length > 0);
+        
+        form.querySelectorAll('input[name="groups"]').forEach(input => input.remove());
+        groups.forEach(group => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'groups';
+            input.value = group;
+            form.appendChild(input);
+        });
+        
+        form.submit();
+    });
+
+    document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const username = this.getAttribute('data-username');
+            if (!confirm('Delete user ' + username + '?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
     document.getElementById('resetPasswordModal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeResetModal();
         }
     });
 
-    // Close modal with Escape key
+    document.getElementById('updateGroupsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeUpdateGroupsModal();
+        }
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeResetModal();
+            closeUpdateGroupsModal();
         }
     });
 </script>
